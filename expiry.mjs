@@ -1,8 +1,8 @@
 import tls from 'tls';
 import net from 'net';
 
-// Function to connect and check certificate
-async function checkCertificateExpiration(host, port, expiryWarningDays, useStartTls = false) {
+// Function to connect and return certificate expiration date
+async function getCertificateExpiration(host, port, expiryWarningDays, useStartTls = false) {
     console.log(`Checking certificate for ${host}:${port} (STARTTLS: ${useStartTls ? 'Yes' : 'No'})`);
 
     return new Promise((resolve, reject) => {
@@ -16,85 +16,44 @@ async function checkCertificateExpiration(host, port, expiryWarningDays, useStar
         };
 
         const handleTlsConnection = () => {
-            console.log(`TLS handshake complete for ${host}:${port}`);
             const certificate = tlsSocket.getPeerCertificate(true);
 
             if (!certificate) {
-                console.warn('No peer certificate found.');
-                tlsSocket.end();
+                if (tlsSocket && !tlsSocket.destroyed) tlsSocket.end();
                 return reject(new Error('No peer certificate found.'));
             }
 
             const endDate = new Date(certificate.valid_to);
-            const now = new Date();
-            const timeDiff = endDate.getTime() - now.getTime();
-            const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-
-            console.log(`Certificate for ${host} is valid until: ${endDate.toUTCString()}`);
-            console.log(`Days remaining: ${daysRemaining}`);
-
-            if (daysRemaining < expiryWarningDays) {
-                console.log('🚨 ALERT: Certificate is expiring soon!');
-                console.log(`Certificate for ${host} expires in ${daysRemaining} days, which is less than ${expiryWarningDays} days.`);
-                resolve({ host, port, expiresSoon: true, daysRemaining, useStartTls });
-            } else {
-                console.log(`Certificate for ${host} is valid for ${daysRemaining} more days.`);
-                resolve({ host, port, expiresSoon: false, daysRemaining, useStartTls });
-            }
-
-            tlsSocket.end();
+            if (tlsSocket && !tlsSocket.destroyed) tlsSocket.end();
+            resolve(endDate);
         };
 
         const handleError = (err) => {
-            console.error(`Error connecting or during TLS handshake to ${host}:${port}:`, err.message);
-            if (socket && !socket.destroyed) socket.destroy(); // Ensure socket is closed
+            if (socket && !socket.destroyed) socket.destroy();
             if (tlsSocket && !tlsSocket.destroyed) tlsSocket.destroy();
             reject(err);
         };
 
         if (useStartTls) {
-            // For STARTTLS, first establish a plain TCP connection
             socket = net.connect(connectOptions, () => {
-                console.log(`Connected to ${host}:${port} for STARTTLS`);
-
-                // Common STARTTLS commands based on port
+                // For STARTTLS flow we keep the previous logic but only upgrade when appropriate
                 let startTlsCommand = '';
                 if (port === 25 || port === 587) { // SMTP
-                    startTlsCommand = 'EHLO example.com\r\n'; // EHLO is good practice before STARTTLS
+                    startTlsCommand = 'EHLO example.com\r\n';
                 } else if (port === 143) { // IMAP
                     startTlsCommand = '1 STARTTLS\r\n';
-                } else {
-                    console.warn(`WARNING: No specific STARTTLS command defined for port ${port}. Trying generic upgrade.`);
-                    // For generic cases, you might just convert if the server immediately expects it
-                    // Or you might need to manually send a command if the protocol is known
                 }
 
-                // Listen for server's ready response before sending STARTTLS command
                 socket.on('data', (data) => {
-                    let buffer = data.toString();
-                    console.log(`Received: ${data.toString().trim()}`); // Log server response
+                    const buffer = data.toString();
 
-                    // Basic checks for server readiness based on common protocols
-                    if ((port === 25 || port === 587) && buffer.includes('220 mail.saxrag.com')) { // SMTP ready
-                        socket.write(startTlsCommand);
-                    } else if (port === 143 && buffer.includes('* OK ')) { // IMAP ready
-                        socket.write(startTlsCommand);
-                    } else if (buffer.includes('STARTTLS\r\n')){
-                        socket.write('STARTTLS\r\n');
-                    }
-
-                    // Check if STARTTLS command was sent and server responded positively
-                    // if (startTlsCommand && buffer.includes('220 Ready to start TLS') || buffer.includes('220 Go ahead with TLS')) {
-                    if (startTlsCommand && buffer.includes('Ready to start TLS') || buffer.includes('220 Go ahead with TLS')) {
-                        console.log('Server ready for TLS upgrade. Converting socket...');
-                        tlsSocket = tls.connect({
-                            socket: socket,
-                            servername: 'mail.saxrag.com'
-                        }, handleTlsConnection);
-                        // tlsSocket = tls.convertNetSocket(socket, connectOptions, handleTlsConnection);
+                    if (startTlsCommand && (buffer.includes('Ready to start TLS') || buffer.includes('220 Go ahead with TLS') || buffer.includes('220 '))) {
+                        tlsSocket = tls.connect({ socket: socket, servername: host }, handleTlsConnection);
                         tlsSocket.on('error', handleError);
-                        // Remove the data listener from the original socket
                         socket.removeAllListeners('data');
+                    } else if (startTlsCommand && (buffer.includes('220') || buffer.includes('250') || buffer.includes('OK'))) {
+                        // send EHLO/STARTTLS if server shows readiness
+                        socket.write(startTlsCommand);
                     }
                 });
 
@@ -104,19 +63,9 @@ async function checkCertificateExpiration(host, port, expiryWarningDays, useStar
             });
 
             socket.on('error', handleError);
-            socket.on('close', () => {
-                if (!tlsSocket || tlsSocket.destroyed) {
-                    console.log(`Plain connection to ${host}:${port} closed.`);
-                }
-            });
-
         } else {
-            // Direct TLS connection
             tlsSocket = tls.connect(connectOptions, handleTlsConnection);
             tlsSocket.on('error', handleError);
-            tlsSocket.on('close', () => {
-                console.log(`Direct TLS connection to ${host}:${port} closed.`);
-            });
         }
     });
 }
@@ -148,18 +97,14 @@ async function main() {
     for (const target of targets) {
         console.log(`\n--- Checking ${target.description} at ${target.host}:${target.port} ---`);
         try {
-            const result = await checkCertificateExpiration(
+            const expiryDate = await getCertificateExpiration(
                 target.host,
                 target.port,
                 EXPIRY_WARNING_DAYS,
                 target.useStartTls
             );
 
-            if (result.expiresSoon) {
-                console.log(`!!! Action needed for ${result.host}:${result.port}: Certificate needs attention.`);
-            } else {
-                console.log(`Certificate for ${result.host}:${result.port} is OK.`);
-            }
+            console.log(`Certificate for ${target.host}:${target.port} expires on ${expiryDate.toUTCString()}`);
         } catch (error) {
             console.error(`Failed to check ${target.host}:${target.port}: ${error.message}`);
         }
