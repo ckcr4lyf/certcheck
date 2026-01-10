@@ -1,0 +1,25 @@
+{
+  "name": "certcheck",
+  "version": "1.0.0",
+  "description": "Check expiry of TLS certs and notify",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ckcr4lyf/certcheck.git"
+  },
+  "keywords": [
+    "certificate",
+    "tls",
+    "ssl",
+    "expiry"
+  ],
+  "author": "Raghu Saxena",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/ckcr4lyf/certcheck/issues"
+  },
+  "homepage": "https://github.com/ckcr4lyf/certcheck#readme"
+}
