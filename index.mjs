@@ -23,7 +23,7 @@ for (const target of targets) {
         );
 
         console.log(`Certificate for ${target.host}:${target.port} expires on ${expiryDate.toUTCString()}`);
-        body += `Certificate for ${target.host}:${target.port} expires on ${expiryDate.toUTCString()}\n`;
+        body += `\nCertificate for ${target.host}:${target.port} expires on ${expiryDate.toUTCString()}\n`;
 
         if (expiryDate.getTime() - Date.now() <= EXPIRY_WARNING_DAYS * 24 * 60 * 60 * 1000) {
             console.warn(`WARNING: Certificate for ${target.host}:${target.port} is expiring within ${EXPIRY_WARNING_DAYS} days!`);

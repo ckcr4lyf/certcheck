@@ -19,7 +19,8 @@ export async function sendDirectMail(subject, body) {
             port: 25,
             secure: false,
             ignoreTLS: true,
-            name: 'certcheck.saxrag.com'
+            name: 'certcheck.saxrag.com',
+            transactionLog: true,
         });
 
         // 3. Send the mail
