@@ -2,7 +2,7 @@ import tls from 'tls';
 import net from 'net';
 
 // Function to connect and return certificate expiration date
-async function getCertificateExpiration(host, port, useStartTls = false) {
+export async function getCertificateExpiration(host, port, useStartTls = false) {
     console.log(`Checking certificate for ${host}:${port} (STARTTLS: ${useStartTls ? 'Yes' : 'No'})`);
 
     return new Promise((resolve, reject) => {
@@ -84,31 +84,3 @@ async function getCertificateExpiration(host, port, useStartTls = false) {
         }
     });
 }
-
-// --- Main execution ---
-async function main() {
-    const EXPIRY_WARNING_DAYS = 14;
-
-    const targets = [
-        { host: 'rfc5746.mywaifu.best', port: 4443, useStartTls: false, description: 'HTTPS' },
-        { host: 'mail.saxrag.com', port: 587, useStartTls: true, description: 'SMTP (STARTTLS)' },
-        { host: 'mail.saxrag.com', port: 993, useStartTls: false, description: 'IMAPS' },
-    ];
-
-    for (const target of targets) {
-        console.log(`\n--- Checking ${target.description} at ${target.host}:${target.port} ---`);
-        try {
-            const expiryDate = await getCertificateExpiration(
-                target.host,
-                target.port,
-                target.useStartTls
-            );
-
-            console.log(`Certificate for ${target.host}:${target.port} expires on ${expiryDate.toUTCString()}`);
-        } catch (error) {
-            console.error(`Failed to check ${target.host}:${target.port}: ${error.message}`);
-        }
-    }
-}
-
-main();

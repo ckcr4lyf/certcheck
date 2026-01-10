@@ -1,0 +1,22 @@
+name: Run index.mjs on push
+
+on:
+  push: {}
+
+jobs:
+  run-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run index.mjs
+        run: node index.mjs
