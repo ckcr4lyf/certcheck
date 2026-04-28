@@ -2,8 +2,9 @@ import tls from 'tls';
 import net from 'net';
 
 // Function to connect and return certificate expiration date
-export async function getCertificateExpiration(host, port, useStartTls = false) {
+export async function getCertificateExpiration(host, port, useStartTls = false, sni = null) {
     console.log(`Checking certificate for ${host}:${port} (STARTTLS: ${useStartTls ? 'Yes' : 'No'})`);
+    const servername = sni || host;
 
     return new Promise((resolve, reject) => {
         /**
@@ -66,7 +67,7 @@ export async function getCertificateExpiration(host, port, useStartTls = false) 
                     if (buffer.includes('220') && handshakeCompleted) {
                         // Server is ready for TLS    
                         socket.removeAllListeners('data');
-                        tlsSocket = tls.connect({ socket: socket, servername: host }, handleTlsConnection);
+                        tlsSocket = tls.connect({ socket: socket, servername: servername }, handleTlsConnection);
                         tlsSocket.on('error', handleError);
                         return;
                     }
@@ -79,7 +80,7 @@ export async function getCertificateExpiration(host, port, useStartTls = false) 
 
             socket.on('error', handleError);
         } else {
-            tlsSocket = tls.connect(connectOptions, handleTlsConnection);
+            tlsSocket = tls.connect({ host: host, port: port, servername: servername, rejectUnauthorized: false }, handleTlsConnection);
             tlsSocket.on('error', handleError);
         }
     });
