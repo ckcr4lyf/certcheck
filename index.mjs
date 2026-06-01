@@ -12,6 +12,7 @@ const targets = [
 ];
 
 let expiringFlag = false;
+let errors = [];
 let subject = "Certificate Expiry Report: All Certificates Valid";
 let body = "";
 
@@ -36,12 +37,17 @@ for (const target of targets) {
         }
     } catch (error) {
         console.error(`Failed to check ${target.host}:${target.port}: ${error.message}`);
+        errors.push({host: target.host, port: target.port, error: error.message});
+        body += `\nERROR: Failed to check ${target.host}:${target.port}: ${error.message}\n`;
     }
 }
 
-await sendDirectMail(subject, body);
+const emailSent = await sendDirectMail(subject, body);
+if (!emailSent) {
+    console.error("Failed to send email notification");
+}
 
-if (expiringFlag) {
+if (errors.length > 0 || expiringFlag) {
     process.exit(1);
 }
 

@@ -32,7 +32,9 @@ export async function sendDirectMail(subject, body) {
         });
 
         console.log("Message sent: %s", info.messageId);
+        return true;
     } catch (error) {
         console.error("Error occurred:", error);
+        return false;
     }
 }
