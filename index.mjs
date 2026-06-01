@@ -13,7 +13,6 @@ const targets = [
 
 let expiringFlag = false;
 let errors = [];
-let subject = "Certificate Expiry Report: All Certificates Valid";
 let body = "";
 
 for (const target of targets) {
@@ -33,13 +32,23 @@ for (const target of targets) {
             console.warn(`WARNING: Certificate for ${target.host}:${target.port} is expiring within ${EXPIRY_WARNING_DAYS} days!`);
             body += `WARNING: Certificate for ${target.host}:${target.port} is expiring within ${EXPIRY_WARNING_DAYS} days!\n`;
             expiringFlag = true;
-            subject = "🚨 ALERT: Certificate Expiry Imminent! 🚨";
         }
     } catch (error) {
         console.error(`Failed to check ${target.host}:${target.port}: ${error.message}`);
         errors.push({host: target.host, port: target.port, error: error.message});
         body += `\nERROR: Failed to check ${target.host}:${target.port}: ${error.message}\n`;
     }
+}
+
+let subject;
+if (errors.length > 0 && expiringFlag) {
+    subject = "🚨 ALERT: Certificate Errors and Expiring Certs";
+} else if (expiringFlag) {
+    subject = "🚨 ALERT: Certificate Expiry Imminent! 🚨";
+} else if (errors.length > 0) {
+    subject = "⚠️ WARNING: Certificate Check Errors";
+} else {
+    subject = "Certificate Expiry Report: All Certificates Valid";
 }
 
 const emailSent = await sendDirectMail(subject, body);
