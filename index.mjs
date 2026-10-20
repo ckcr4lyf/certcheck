@@ -6,6 +6,8 @@ const EXPIRY_WARNING_DAYS = 14;
 const targets = [
     { host: 'rfc5746.mywaifu.best', port: 4443, useStartTls: false, description: 'HTTPS' },
     { host: 'rfc9849.mywaifu.best', port: 4443, useStartTls: false, description: 'HTTPS', sni: 'rfc9849.mywaifu.best' },
+    { host: 'randomech.com', port: 443, useStartTls: false, description: 'HTTPS' },
+    { host: 'saxrag.com', port: 443, useStartTls: false, description: 'HTTPS' },
     { host: 'mail.saxrag.com', port: 587, useStartTls: true, description: 'SMTP (STARTTLS)' },
     { host: 'mail.saxrag.com', port: 993, useStartTls: false, description: 'IMAPS', sni: 'mail.saxrag.com' },
 ];
